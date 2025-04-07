@@ -1,122 +1,118 @@
 package com.example.graficador
 
-//Clase para convertir expresiones en notación infija a postfija y evaluar funciones matemáticas.
+import kotlin.math.pow
 
+// Clase para manejar todo el proceso de graficación
 class Graficador {
+    // Define la prioridad de cada operador matemático
+    private val prioridadOperadores = mapOf(
+        '+' to 1,
+        '-' to 1,
+        '*' to 2,
+        '/' to 2,
+        '^' to 3
+    )
 
-    /**
-     * Convierte una expresión matemática infija a postfija.
-     * Utiliza una pila para manejar la precedencia de los operadores.
-     * @param expresion La expresión en notación infija.
-     * @return La expresión convertida en notación postfija.
-     */
+    // Convierte expresión normal a notación postfija (más fácil de calcular)
+    fun convertirInfijaAPostfija(expresion: String): String {
+        val pilaOperadores = Pila<Char>()
+        val resultado = StringBuilder()
+        val expresionLimpia = expresion.replace(" ", "")
 
-    fun infijaAPostfija(expresion: String): String {
-        val pila = Pila<Char>()
-        val output = StringBuilder()
-        val precedencia = mapOf('+' to 1, '-' to 1, '*' to 2, '/' to 2, '^' to 3)
-
-        // Itera sobre cada carácter de la expresión (sin espacios)
-
-        for (caracter in expresion.replace(" ", "")) {
+        for (caracter in expresionLimpia) {
             when {
-                caracter.isDigit() || caracter == 'x' -> output.append(caracter) // Números y variable 'x'
-                caracter == '(' -> pila.push(caracter) // Paréntesis izquierdo
+                // Si es número o variable x, lo añadimos directamente
+                caracter.isDigit() || caracter == 'x' -> resultado.append(caracter)
+
+                // Si es paréntesis que abre, lo metemos a la pila
+                caracter == '(' -> pilaOperadores.push(caracter)
+
+                // Si es paréntesis que cierra, vaciamos hasta encontrar el que abre
                 caracter == ')' -> {
-
-                    // Desapila hasta encontrar el paréntesis izquierdo
-
-                    while (!pila.estaVacia() && pila.peek() != '(') {
-                        output.append(pila.pop())
+                    while (!pilaOperadores.estaVacia() && pilaOperadores.peek() != '(') {
+                        resultado.append(pilaOperadores.pop())
                     }
-                    pila.pop() // Elimina el paréntesis izquierdo de la pila
+                    pilaOperadores.pop() // Quitamos el '(' de la pila
                 }
+
+                // Si es operador matemático (+, -, *, /, ^)
                 else -> {
-
-                    // Manejo de operadores según su precedencia
-
-                    while (!pila.estaVacia() &&
-                        pila.peek() != '(' &&
-                        (precedencia[pila.peek()] ?: 0) >= (precedencia[caracter] ?: 0)) {
-                        output.append(pila.pop())
+                    // Reorganizamos los operadores según su prioridad
+                    while (!pilaOperadores.estaVacia() &&
+                        pilaOperadores.peek() != '(' &&
+                        prioridadOperadores[pilaOperadores.peek()]!! >= prioridadOperadores[caracter]!!
+                    ) {
+                        resultado.append(pilaOperadores.pop())
                     }
-                    pila.push(caracter)
+                    pilaOperadores.push(caracter)
                 }
             }
         }
 
-        // Vacía la pila al final
-
-        while (!pila.estaVacia()) {
-            output.append(pila.pop())
+        // Vaciamos los operadores que quedaron en la pila
+        while (!pilaOperadores.estaVacia()) {
+            resultado.append(pilaOperadores.pop())
         }
 
-        return output.toString()
+        return resultado.toString()
     }
 
-    /**
-     * Evalúa el valor de una expresión en notación postfija para un valor dado de 'x'.
-     * @param x Valor de la variable 'x'.
-     * @param expresionPostfija Expresión en notación postfija.
-     * @return Resultado numérico de la evaluación.
-     */
-
-    fun evaluarPunto(x: Double, expresionPostfija: String): Double {
-        val pila = Pila<Double>()
+    // Calcula el valor de y para un valor específico de x
+    fun calcularPunto(x: Double, expresionPostfija: String): Double {
+        val pilaNumeros = Pila<Double>()
 
         for (caracter in expresionPostfija) {
             when {
-                caracter.isDigit() -> pila.push(caracter.toString().toDouble()) // Convierte números en operandos
-                caracter == 'x' -> pila.push(x) // Reemplaza 'x' por su valor
+                // Si es la variable x, usamos el valor proporcionado
+                caracter == 'x' -> pilaNumeros.push(x)
+
+                // Si es número, lo convertimos a Double
+                caracter.isDigit() -> pilaNumeros.push(caracter.toString().toDouble())
+
+                // Si es operador, hacemos el cálculo
                 else -> {
-
-                    // Se extraen los dos últimos operandos de la pila
-
-                    val b = pila.pop()
-                    val a = pila.pop()
-
-                    // Se realiza la operación correspondiente
-
-                    pila.push(
-                        when (caracter) {
-                            '+' -> a + b
-                            '-' -> a - b
-                            '*' -> a * b
-                            '/' -> a / b
-                            '^' -> Math.pow(a, b)
-                            else -> throw IllegalArgumentException("Operador no válido")
-                        }
-                    )
+                    val numeroB = pilaNumeros.pop()
+                    val numeroA = pilaNumeros.pop()
+                    val resultado = realizarOperacion(numeroA, numeroB, caracter)
+                    pilaNumeros.push(resultado)
                 }
             }
         }
-        return pila.peek()
+
+        return pilaNumeros.pop()
     }
 
-    /**
-     * Evalúa una función matemática en un rango de valores.
-     * @param inicio Valor inicial del rango.
-     * @param fin Valor final del rango.
-     * @param pasos Cantidad de puntos a evaluar.
-     * @param expresionPostfija Expresión en notación postfija.
-     * @return Un array de pares (x, y) con los valores evaluados.
-     */
+    // Genera múltiples puntos para hacer la gráfica
+    fun generarPuntos(inicio: Double, fin: Double, cantidadPuntos: Int, postfija: String): Array<DoubleArray> {
+        // Validaciones básicas
+        if (cantidadPuntos <= 0) throw Exception("Debes pedir al menos 1 punto")
+        if (inicio > fin) throw Exception("El inicio no puede ser mayor al final")
 
-    fun evaluarRango(
-        inicio: Double,
-        fin: Double,
-        pasos: Int,
-        expresionPostfija: String
-    ): Array<DoubleArray> {
-        val puntos = Array(pasos) { DoubleArray(2) }
-        val incremento = (fin - inicio) / (pasos - 1)
+        val puntos = Array(cantidadPuntos) { DoubleArray(2) }
+        val distanciaEntrePuntos = if (cantidadPuntos == 1) 0.0 else (fin - inicio) / (cantidadPuntos - 1)
 
-        // Calcula los valores de la función para cada punto en el rango
-
-        for (i in 0 until pasos) {
-            puntos[i][0] = inicio + i * incremento // Valor de x
-            puntos[i][1] = evaluarPunto(puntos[i][0], expresionPostfija) // Valor de y = f(x)
+        // Calculamos cada punto
+        for (i in 0 until cantidadPuntos) {
+            val x = inicio + i * distanciaEntrePuntos
+            puntos[i][0] = x
+            puntos[i][1] = calcularPunto(x, postfija)
         }
+
         return puntos
+    }
+
+    // Realiza las operaciones matemáticas básicas
+    private fun realizarOperacion(a: Double, b: Double, operador: Char): Double {
+        return when (operador) {
+            '+' -> a + b
+            '-' -> a - b
+            '*' -> a * b
+            '/' -> {
+                if (b == 0.0) throw Exception("No se puede dividir entre cero")
+                a / b
+            }
+            '^' -> a.pow(b)
+            else -> throw Exception("Operador desconocido: $operador")
+        }
     }
 }

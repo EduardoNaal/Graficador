@@ -3,17 +3,22 @@ package com.example.graficador
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import com.example.graficador.ui.theme.GraficadorTheme
 
 class MainActivity : ComponentActivity() {
@@ -21,161 +26,217 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             GraficadorTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    GraficadorScreen()
-                }
+                InterfazGraficadora()
             }
         }
     }
 }
 
-// Pantalla principal que permite ingresar una expresión infija y convertirla a postfija, evaluarla y graficarla.
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GraficadorScreen() {
-    val graficador = remember { Graficador() }
-    var expression by remember { mutableStateOf("") }
-    var postfija by remember { mutableStateOf("") }
-    var resultado by remember { mutableStateOf("") }
+fun InterfazGraficadora() {
+    var expresion by remember { mutableStateOf("x") }
+    var modoEvaluacion by remember { mutableStateOf("rango") }
+    var valorXPunto by remember { mutableStateOf("0") }
+    var inicioRango by remember { mutableStateOf("-5") }
+    var finRango by remember { mutableStateOf("5") }
+    var numPuntos by remember { mutableStateOf("100") }
+    var mostrarAyuda by remember { mutableStateOf(false) }
     var puntos by remember { mutableStateOf<Array<DoubleArray>?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf("") }
+
+    val graficador = remember { Graficador() }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState())
     ) {
-        // Campo de entrada para la expresión matemática
-
-        OutlinedTextField(
-            value = expression,
-            onValueChange = { expression = it },
-            label = { Text("Expresión (ej: 3*x+2)") },
+        // Encabezado
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        // Botón para calcular y graficar la expresión
-
-        Button(
-            onClick = {
-                try {
-                    postfija = graficador.infijaAPostfija(expression)
-                    puntos = graficador.evaluarRango(-10.0, 10.0, 100, postfija)
-                    resultado = "Postfija: $postfija\n" +
-                            "Ejemplo (x=2): ${"%.2f".format(graficador.evaluarPunto(2.0, postfija))}"
-                    error = null
-                } catch (e: Exception) {
-                    error = "Error: ${e.message}"
-                    resultado = ""
-                    puntos = null
-                }
-            },
-            enabled = expression.isNotEmpty(),
-            modifier = Modifier.align(Alignment.CenterHorizontally)
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Calcular y Graficar")
-        }
-
-        // Mostrar resultados de la conversión y evaluación
-
-        if (resultado.isNotEmpty()) {
             Text(
-                text = resultado,
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
+                text = "Graficador 2D",
+                style = MaterialTheme.typography.headlineSmall
             )
+            IconButton(onClick = { mostrarAyuda = true }) {
+                Icon(imageVector = Icons.Default.Info, contentDescription = "Ayuda")
+            }
         }
 
-        // Mostrar mensajes de error
+        Spacer(modifier = Modifier.height(16.dp))
 
-        error?.let {
-            Text(
-                text = it,
-                color = Color.Red,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(8.dp)
+        // Selector de modo
+        Text("Tipo de evaluación:", style = MaterialTheme.typography.labelLarge)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            RadioButton(
+                selected = modoEvaluacion == "punto",
+                onClick = { modoEvaluacion = "punto" }
             )
+            Text("Un punto", modifier = Modifier.padding(end = 16.dp))
+            RadioButton(
+                selected = modoEvaluacion == "rango",
+                onClick = { modoEvaluacion = "rango" }
+            )
+            Text("Rango")
         }
 
-        // Mostrar el gráfico de la función
+        Spacer(modifier = Modifier.height(16.dp))
 
-        if (puntos != null) {
-            GraficoBasico(
-                puntos = puntos!!,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(300.dp)
-            )
-        }
-    }
-}
-
-/**
- * Componente para dibujar la gráfica de la función.
- * @param puntos Lista de puntos (x, y) generados a partir de la función matemática.
- * @param modifier Modificadores para ajustar la apariencia del gráfico.
- */
-
-@Composable
-fun GraficoBasico(
-    puntos: Array<DoubleArray>,
-    modifier: Modifier = Modifier
-) {
-    Canvas(modifier = modifier) {
-        val centerX = size.width / 2
-        val centerY = size.height / 2
-        val scaleX = size.width / 20f  // Escala para el eje X (rango -10 a 10)
-        val scaleY = size.height / 20f // Escala para el eje Y
-
-        // Dibujar los ejes coordenados
-        drawLine(
-            color = Color.Black,
-            start = Offset(0f, centerY),
-            end = Offset(size.width, centerY),
-            strokeWidth = 2f
+        // Entrada de expresión
+        OutlinedTextField(
+            value = expresion,
+            onValueChange = { expresion = it },
+            label = { Text("Expresión (ej: x^2 + 3*x - 5)") },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Usa 'x' como variable") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii)
         )
 
-        drawLine(
-            color = Color.Black,
-            start = Offset(centerX, 0f),
-            end = Offset(centerX, size.height),
-            strokeWidth = 2f
-        )
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Dibujar la función en el gráfico
-        for (i in 0 until puntos.size - 1) {
-            try {
-                val x1 = ((puntos[i][0] + 10) * scaleX).toFloat()
-                val y1 = (centerY - (puntos[i][1] * scaleY)).toFloat()
-                val x2 = ((puntos[i+1][0] + 10) * scaleX).toFloat()
-                val y2 = (centerY - (puntos[i+1][1] * scaleY)).toFloat()
-
-                if (y1.isFinite() && y2.isFinite()) {
-                    drawLine(
-                        color = Color.Blue,
-                        start = Offset(x1, y1),
-                        end = Offset(x2, y2),
-                        strokeWidth = 2f
+        // Campos dinámicos
+        if (modoEvaluacion == "punto") {
+            OutlinedTextField(
+                value = valorXPunto,
+                onValueChange = { valorXPunto = it },
+                label = { Text("Valor de x") },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+        } else {
+            Column {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = inicioRango,
+                        onValueChange = { inicioRango = it },
+                        label = { Text("Inicio") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                    OutlinedTextField(
+                        value = finRango,
+                        onValueChange = { finRango = it },
+                        label = { Text("Fin") },
+                        modifier = Modifier.weight(1f),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                 }
-            } catch (e: Exception) {
-                // Ignorar puntos inválidos para evitar fallos
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = numPuntos,
+                    onValueChange = { numPuntos = it },
+                    label = { Text("Número de puntos") },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Botones de acción
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Button(
+                onClick = {
+                    expresion = "x"
+                    valorXPunto = "0"
+                    inicioRango = "-5"
+                    finRango = "5"
+                    numPuntos = "100"
+                    puntos = null
+                    error = ""
+                },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                )
+            ) { Text("Limpiar") }
+
+            Button(
+                onClick = {
+                    try {
+                        val postfija = graficador.convertirInfijaAPostfija(expresion)
+                        puntos = if (modoEvaluacion == "punto") {
+                            val x = valorXPunto.toDouble()
+                            arrayOf(doubleArrayOf(x, graficador.calcularPunto(x, postfija)))
+                        } else {
+                            graficador.generarPuntos(
+                                inicioRango.toDouble(),
+                                finRango.toDouble(),
+                                numPuntos.toInt(),
+                                postfija
+                            )
+                        }
+                        error = ""
+                    } catch (e: Exception) {
+                        error = "Error: ${e.message}"
+                        puntos = null
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            ) { Text("Graficar") }
+        }
+
+        // Mostrar errores
+        if (error.isNotEmpty()) {
+            Text(error, color = Color.Red, modifier = Modifier.padding(vertical = 8.dp))
+        }
+
+        // Área del gráfico
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(300.dp)
+                .padding(top = 24.dp)
+                .border(1.dp, Color.Gray)
+        ) {
+            if (puntos != null && puntos!!.isNotEmpty()) {
+                GraficoCanvas(
+                    puntos = puntos!!,
+                    esPuntoUnico = modoEvaluacion == "punto"
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFFE3F2FD)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (error.isEmpty()) "Ingrese una función" else " ",
+                        color = Color(0xFF1976D2))
+                }
             }
         }
     }
-}
 
-@Preview(showBackground = true)
-@Composable
-fun GraficadorPreview() {
-    GraficadorTheme {
-        GraficadorScreen()
+    // Diálogo de ayuda
+    if (mostrarAyuda) {
+        Dialog(onDismissRequest = { mostrarAyuda = false }) {
+            Surface(
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Instrucciones:", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("1. Usa operadores: + - * / ^")
+                    Text("2. Escribe 'x' como variable")
+                    Text("3. El origen (0,0) está al centro")
+                    Text("4. Valores decimales con punto (ej: 2.5)")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { mostrarAyuda = false },
+                        modifier = Modifier.align(Alignment.End)
+                    ) { Text("Entendido") }
+                }
+            }
+        }
     }
 }

@@ -1,64 +1,69 @@
 package com.example.graficador
 
-//Clase genérica que implementa una pila (estructura LIFO: Last In, First Out).
-
+/**
+ * Clase Pila simplificada para principiantes
+ * Funciona como una pila de platos: el último que entra es el primero que sale
+ */
 class Pila<T> {
-    private var tope: Nodo<T>? = null  // Referencia al nodo en la cima de la pila
-    private var tamaño: Int = 0  // Cantidad de elementos en la pila
+    // Usamos una lista mutable para guardar los elementos
+    private val elementos = mutableListOf<T>()
 
-    // Clase interna para representar un nodo de la pila
-
-    private class Nodo<T>(val dato: T, var siguiente: Nodo<T>?)
-
-    //Verifica si la pila está vacía.
-
-    fun estaVacia(): Boolean = tope == null
-
-    //Retorna el tamaño actual de la pila.
-
-    fun tamaño(): Int = tamaño
-
-    //Agrega un nuevo elemento a la pila.
-
+    /**
+     * Agrega un elemento a la parte superior de la pila
+     * @param elemento El elemento a agregar
+     */
     fun push(elemento: T) {
-        val nuevoNodo = Nodo(elemento, tope)
-        tope = nuevoNodo
-        tamaño++
+        elementos.add(elemento)
     }
 
-    //Elimina y devuelve el elemento en la cima de la pila.
-
+    /**
+     * Quita y devuelve el elemento de la parte superior de la pila
+     * @return El elemento removido
+     * @throws IllegalStateException si la pila está vacía
+     */
     fun pop(): T {
-        if (estaVacia()) throw IllegalStateException("La pila está vacía")
-        val dato = tope!!.dato
-        tope = tope!!.siguiente
-        tamaño--
-        return dato
-    }
-
-    //Devuelve el elemento en la cima de la pila sin eliminarlo.
-
-    fun peek(): T {
-        if (estaVacia()) throw IllegalStateException("La pila está vacía")
-        return tope!!.dato
-    }
-
-    //Elimina todos los elementos de la pila.
-
-    fun limpiar() {
-        tope = null
-        tamaño = 0
-    }
-
-    //Convierte la pila en una lista para facilitar su visualización.
-
-    fun toList(): List<T> {
-        val lista = mutableListOf<T>()
-        var actual = tope
-        while (actual != null) {
-            lista.add(actual.dato)
-            actual = actual.siguiente
+        if (estaVacia()) {
+            throw IllegalStateException("¡No puedes sacar elementos de una pila vacía!")
         }
-        return lista
+        return elementos.removeAt(elementos.size - 1)
+    }
+
+    /**
+     * Mira el elemento en la parte superior sin quitarlo
+     * @return El elemento en la cima
+     * @throws IllegalStateException si la pila está vacía
+     */
+    fun peek(): T {
+        if (estaVacia()) {
+            throw IllegalStateException("¡No hay nada que ver, la pila está vacía!")
+        }
+        return elementos.last()
+    }
+
+    /**
+     * Verifica si la pila está vacía
+     * @return true si está vacía, false si tiene elementos
+     */
+    fun estaVacia(): Boolean = elementos.isEmpty()
+
+    /**
+     * Cuenta cuántos elementos hay en la pila
+     * @return El número de elementos
+     */
+    fun tamano(): Int = elementos.size
+
+    /**
+     * Vacía toda la pila
+     */
+    fun limpiar() {
+        elementos.clear()
+    }
+
+    /**
+     * Muestra los elementos como una cadena de texto
+     * @return String representando la pila
+     */
+    override fun toString(): String {
+        return "Pila: ${elementos.joinToString(" -> ")} (tope)"
     }
 }
