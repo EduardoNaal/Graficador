@@ -1,69 +1,39 @@
 package com.example.graficador
 
-/**
- * Clase Pila simplificada para principiantes
- * Funciona como una pila de platos: el último que entra es el primero que sale
- */
+/*Clase que representa un nodo en una lista enlazada
+* Cada nodo guarda un dato y tiene referencia al siguiente nodo
+*/
+class Nodo<T>(val dato: T, var siguiente: Nodo<T>? = null)
+
+// Clase que implementa una pila usando nodos enlazados
 class Pila<T> {
-    // Usamos una lista mutable para guardar los elementos
-    private val elementos = mutableListOf<T>()
+    private var cima: Nodo<T>? = null  // El nodo en la parte superior de la pila
 
-    /**
-     * Agrega un elemento a la parte superior de la pila
-     * @param elemento El elemento a agregar
-     */
+    // Mete un elemento a la pila
     fun push(elemento: T) {
-        elementos.add(elemento)
+        val nuevoNodo = Nodo(elemento, cima)  // Crea nodo que apunta a la vieja cima
+        cima = nuevoNodo  // La nueva cima es nuestro nodo
     }
 
-    /**
-     * Quita y devuelve el elemento de la parte superior de la pila
-     * @return El elemento removido
-     * @throws IllegalStateException si la pila está vacía
-     */
+    // Saca el elemento de la cima de la pila
     fun pop(): T {
-        if (estaVacia()) {
-            throw IllegalStateException("¡No puedes sacar elementos de una pila vacía!")
-        }
-        return elementos.removeAt(elementos.size - 1)
+        if (estaVacia()) throw NoSuchElementException("Pila vacía")
+        val dato = cima!!.dato  // Guardamos el dato antes de sacarlo
+        cima = cima!!.siguiente  // La nueva cima es el siguiente nodo
+        return dato
     }
 
-    /**
-     * Mira el elemento en la parte superior sin quitarlo
-     * @return El elemento en la cima
-     * @throws IllegalStateException si la pila está vacía
-     */
+    // Mira el elemento de la cima sin sacarlo
     fun peek(): T {
-        if (estaVacia()) {
-            throw IllegalStateException("¡No hay nada que ver, la pila está vacía!")
-        }
-        return elementos.last()
+        if (estaVacia()) throw NoSuchElementException("Pila vacía")
+        return cima!!.dato
     }
 
-    /**
-     * Verifica si la pila está vacía
-     * @return true si está vacía, false si tiene elementos
-     */
-    fun estaVacia(): Boolean = elementos.isEmpty()
+    // Nos dice si la pila está vacía
+    fun estaVacia(): Boolean = cima == null
 
-    /**
-     * Cuenta cuántos elementos hay en la pila
-     * @return El número de elementos
-     */
-    fun tamano(): Int = elementos.size
-
-    /**
-     * Vacía toda la pila
-     */
+    // Vacía la pila
     fun limpiar() {
-        elementos.clear()
-    }
-
-    /**
-     * Muestra los elementos como una cadena de texto
-     * @return String representando la pila
-     */
-    override fun toString(): String {
-        return "Pila: ${elementos.joinToString(" -> ")} (tope)"
+        cima = null  // Simplemente quitamos la referencia a la cima
     }
 }

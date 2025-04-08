@@ -7,11 +7,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import kotlin.math.abs
-import kotlin.math.max
-import kotlin.math.min
+import kotlin.math.*
 
+// Composable que dibuja puntos y curvas en un canvas
 @Composable
 fun GraficoCanvas(
     puntos: Array<DoubleArray>,
@@ -19,76 +19,110 @@ fun GraficoCanvas(
     modifier: Modifier = Modifier
 ) {
     Canvas(modifier = modifier.fillMaxSize()) {
-        val width = size.width
-        val height = size.height
-        val centerX = width / 2
-        val centerY = height / 2
+        val ancho = size.width
+        val alto = size.height
+        val centroX = ancho / 2f
+        val centroY = alto / 2f
 
-        // Calcular máximos absolutos para escalado simétrico
-        val maxX = puntos.maxOfOrNull { abs(it[0]) } ?: 1.0
-        val maxY = puntos.maxOfOrNull { abs(it[1]) } ?: 1.0
-        val maxRange = max(maxX, maxY).coerceAtLeast(1.0)
+        val valoresX = puntos.map { it[0] }
+        val valoresY = puntos.map { it[1] }
+        val (minX, maxX) = calcularMinMax(valoresX)
+        val (minY, maxY) = calcularMinMax(valoresY)
+        val rangoX = max(abs(minX), abs(maxX)).coerceAtLeast(1.0)
+        val rangoY = max(abs(minY), abs(maxY)).coerceAtLeast(1.0)
+        val rangoMaximo = max(rangoX, rangoY)
+        val escala = (min(ancho, alto) / 2f / rangoMaximo.toFloat())
 
-        // Calcular factor de escalado común
-        val scale = min(
-            width / (2 * maxRange),
-            height / (2 * maxRange)
-        ).coerceAtLeast(0.1)
+        // Convierte coordenada x de valor a posición en pantalla
+        fun convertX(x: Double): Float = centroX + (x * escala).toFloat()
+        // Convierte coordenada y de valor a posición en pantalla
+        fun convertY(y: Double): Float = centroY - (y * escala).toFloat()
 
-        // Funciones de conversión de coordenadas
-        fun Double.toXCoord() = centerX + (this * scale).toFloat()
-        fun Double.toYCoord() = centerY - (this * scale).toFloat()
+        // Dibuja cuadrícula
+        dibujarCuadricula(rangoMaximo, escala, centroX, centroY, ancho, alto)
+        // Dibuja ejes
+        dibujarEjes(centroX, centroY, ancho, alto)
 
-        // Dibujar ejes
-        drawLine(
-            color = Color.Gray,
-            start = Offset(0f, centerY),
-            end = Offset(width, centerY),
-            strokeWidth = 1f
-        )
-        drawLine(
-            color = Color.Gray,
-            start = Offset(centerX, 0f),
-            end = Offset(centerX, height),
-            strokeWidth = 1f
-        )
-
-        // Dibujar gráfica
-        if (esPuntoUnico && puntos.size == 1) {
+        // Dibuja cada punto
+        puntos.forEach { punto ->
             drawCircle(
-                color = Color.Red,
-                radius = 8f,
-                center = Offset(
-                    puntos[0][0].toXCoord(),
-                    puntos[0][1].toYCoord()
-                )
-            )
-        } else {
-            val path = Path().apply {
-                moveTo(
-                    puntos[0][0].toXCoord(),
-                    puntos[0][1].toYCoord()
-                )
-                for (i in 1 until puntos.size) {
-                    lineTo(
-                        puntos[i][0].toXCoord(),
-                        puntos[i][1].toYCoord()
-                    )
-                }
-            }
-            drawPath(
-                path = path,
-                color = Color.Blue,
-                style = Stroke(width = 2f)
+                color = if (esPuntoUnico) Color.Red else Color.Blue,
+                radius = if (esPuntoUnico) 10f else 5f,
+                center = Offset(convertX(punto[0]), convertY(punto[1]))
             )
         }
 
-        // Borde del área del gráfico
-        drawRect(
-            color = Color.Gray,
-            style = Stroke(width = 1f),
-            topLeft = Offset.Zero,
-            size = size
-        )
+        // Si es rango, conecta puntos con línea
+        if (!esPuntoUnico && puntos.size > 1) {
+            val ruta = Path().apply {
+                moveTo(convertX(puntos.first()[0]), convertY(puntos.first()[1]))
+                puntos.drop(1).forEach { punto ->
+                    lineTo(convertX(punto[0]), convertY(punto[1]))
+                }
+            }
+            drawPath(ruta, Color.Blue.copy(alpha = 0.5f), style = Stroke(3f))
+        }
     }
+}
+
+// Calcula min y max con margen
+private fun calcularMinMax(valores: List<Double>): Pair<Double, Double> {
+    if (valores.isEmpty()) return Pair(-1.0, 1.0)
+    val min = valores.minOrNull()!!
+    val max = valores.maxOrNull()!!
+    val margen = max((max - min) * 0.1, 1.0)
+    return Pair(min - margen, max + margen)
+}
+
+// Dibuja la cuadrícula con líneas espaciadas
+private fun DrawScope.dibujarCuadricula(
+    rangoMaximo: Double,
+    escala: Float,
+    centroX: Float,
+    centroY: Float,
+    ancho: Float,
+    alto: Float
+) {
+    val paso = calcularPasoCuadricula(rangoMaximo)
+    val colorCuadricula = Color.LightGray.copy(alpha = 0.3f)
+
+    var x = -rangoMaximo
+    while (x <= rangoMaximo) {
+        if (abs(x) > 1e-6) {
+            val px = centroX + (x * escala).toFloat()
+            drawLine(colorCuadricula, Offset(px, 0f), Offset(px, alto), 1f)
+        }
+        x += paso
+    }
+
+    var y = -rangoMaximo
+    while (y <= rangoMaximo) {
+        if (abs(y) > 1e-6) {
+            val py = centroY - (y * escala).toFloat()
+            drawLine(colorCuadricula, Offset(0f, py), Offset(ancho, py), 1f)
+        }
+        y += paso
+    }
+}
+
+// Calcula el paso de la cuadrícula según el rango
+private fun calcularPasoCuadricula(rangoMaximo: Double): Double {
+    val log = floor(log10(rangoMaximo))
+    val pasoBase = 10.0.pow(log)
+    return when {
+        rangoMaximo / pasoBase >= 5 -> pasoBase * 5
+        rangoMaximo / pasoBase >= 2 -> pasoBase * 2
+        else -> pasoBase
+    }
+}
+
+// Dibuja los ejes X e Y
+private fun DrawScope.dibujarEjes(
+    centroX: Float,
+    centroY: Float,
+    ancho: Float,
+    alto: Float
+) {
+    drawLine(Color.Black, Offset(0f, centroY), Offset(ancho, centroY), 2f)
+    drawLine(Color.Black, Offset(centroX, 0f), Offset(centroX, alto), 2f)
 }

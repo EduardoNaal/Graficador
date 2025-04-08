@@ -3,12 +3,9 @@ package com.example.graficador
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
@@ -18,8 +15,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import com.example.graficador.ui.theme.GraficadorTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,49 +30,47 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InterfazGraficadora() {
-    var expresion by remember { mutableStateOf("x") }
-    var modoEvaluacion by remember { mutableStateOf("rango") }
-    var valorXPunto by remember { mutableStateOf("0") }
-    var inicioRango by remember { mutableStateOf("-5") }
-    var finRango by remember { mutableStateOf("5") }
-    var numPuntos by remember { mutableStateOf("100") }
-    var mostrarAyuda by remember { mutableStateOf(false) }
-    var puntos by remember { mutableStateOf<Array<DoubleArray>?>(null) }
-    var error by remember { mutableStateOf("") }
+    // Estados para guardar los valores de la interfaz
+    var expresion by remember { mutableStateOf("x^2 - 3*x + 2") }  // Expresión a graficar
+    var modoEvaluacion by remember { mutableStateOf("rango") }      // Modo: punto o rango
+    var valorXPunto by remember { mutableStateOf("0") }             // Valor x para modo punto
+    var inicioRango by remember { mutableStateOf("0") }             // Inicio del rango
+    var finRango by remember { mutableStateOf("1") }                // Fin del rango
+    var numPuntos by remember { mutableStateOf("10") }              // Cantidad de puntos
+    var mostrarAyuda by remember { mutableStateOf(false) }          // Mostrar ayuda?
+    var puntos by remember { mutableStateOf<Array<DoubleArray>?>(null) }  // Puntos calculados
+    var error by remember { mutableStateOf("") }                    // Mensaje de error
 
-    val graficador = remember { Graficador() }
+    val graficador = remember { Graficador() }  // Instancia del graficador
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(rememberScrollState())  // Permite scroll si hace falta
     ) {
-        // Encabezado
+        // Título y botón de ayuda
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Graficador 2D",
-                style = MaterialTheme.typography.headlineSmall
-            )
+            Text("Graficador", style = MaterialTheme.typography.headlineSmall)
             IconButton(onClick = { mostrarAyuda = true }) {
-                Icon(imageVector = Icons.Default.Info, contentDescription = "Ayuda")
+                Icon(Icons.Default.Info, contentDescription = "Ayuda")
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(Modifier.height(16.dp))
 
-        // Selector de modo
+        // Selección de modo: un punto o rango
         Text("Tipo de evaluación:", style = MaterialTheme.typography.labelLarge)
         Row(verticalAlignment = Alignment.CenterVertically) {
             RadioButton(
                 selected = modoEvaluacion == "punto",
                 onClick = { modoEvaluacion = "punto" }
             )
-            Text("Un punto", modifier = Modifier.padding(end = 16.dp))
+            Text("Un punto", Modifier.padding(end = 16.dp))
             RadioButton(
                 selected = modoEvaluacion == "rango",
                 onClick = { modoEvaluacion = "rango" }
@@ -85,21 +78,21 @@ fun InterfazGraficadora() {
             Text("Rango")
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(Modifier.height(16.dp))
 
-        // Entrada de expresión
+        // Campo para la expresión matemática
         OutlinedTextField(
             value = expresion,
             onValueChange = { expresion = it },
-            label = { Text("Expresión (ej: x^2 + 3*x - 5)") },
+            label = { Text("Expresión (ej: x^2 + 3*x + 2)") },
             modifier = Modifier.fillMaxWidth(),
             placeholder = { Text("Usa 'x' como variable") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii)
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(Modifier.height(16.dp))
 
-        // Campos dinámicos
+        // Si modo es punto, pido valor de x
         if (modoEvaluacion == "punto") {
             OutlinedTextField(
                 value = valorXPunto,
@@ -109,6 +102,7 @@ fun InterfazGraficadora() {
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
         } else {
+            // Si modo es rango, pido inicio, fin y número de puntos
             Column {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -126,7 +120,7 @@ fun InterfazGraficadora() {
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
                     value = numPuntos,
                     onValueChange = { numPuntos = it },
@@ -137,17 +131,18 @@ fun InterfazGraficadora() {
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(Modifier.height(24.dp))
 
-        // Botones de acción
+        // Botones Limpiar y Graficar
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Button(
                 onClick = {
+                    // Resetea todo a valores por defecto
                     expresion = "x"
                     valorXPunto = "0"
-                    inicioRango = "-5"
-                    finRango = "5"
-                    numPuntos = "100"
+                    inicioRango = "0"
+                    finRango = "1"
+                    numPuntos = "10"
                     puntos = null
                     error = ""
                 },
@@ -156,15 +151,23 @@ fun InterfazGraficadora() {
                     containerColor = MaterialTheme.colorScheme.errorContainer,
                     contentColor = MaterialTheme.colorScheme.onErrorContainer
                 )
-            ) { Text("Limpiar") }
+            ) {
+                Text("Limpiar")
+            }
 
             Button(
                 onClick = {
                     try {
-                        val postfija = graficador.convertirInfijaAPostfija(expresion)
+                        // Paso 1: preprocesar la expresión
+                        val expresionProcesada = graficador.preprocesarExpresion(expresion)
+                        // Paso 2: convertir a postfija
+                        val postfija = graficador.convertirInfijaAPostfija(expresionProcesada)
+                        // Paso 3: generar puntos
                         puntos = if (modoEvaluacion == "punto") {
-                            val x = valorXPunto.toDouble()
-                            arrayOf(doubleArrayOf(x, graficador.calcularPunto(x, postfija)))
+                            arrayOf(doubleArrayOf(
+                                valorXPunto.toDouble(),
+                                graficador.calcularPunto(valorXPunto.toDouble(), postfija)
+                            ))
                         } else {
                             graficador.generarPuntos(
                                 inicioRango.toDouble(),
@@ -180,27 +183,28 @@ fun InterfazGraficadora() {
                     }
                 },
                 modifier = Modifier.weight(1f)
-            ) { Text("Graficar") }
+            ) {
+                Text("Graficar")
+            }
         }
 
-        // Mostrar errores
+        // Si hay error, lo muestro en rojo
         if (error.isNotEmpty()) {
             Text(error, color = Color.Red, modifier = Modifier.padding(vertical = 8.dp))
         }
 
-        // Área del gráfico
+        Spacer(Modifier.height(16.dp))
+
+        // Área de dibujo o mensaje inicial
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(300.dp)
-                .padding(top = 24.dp)
+                .padding(top = 8.dp)
                 .border(1.dp, Color.Gray)
         ) {
             if (puntos != null && puntos!!.isNotEmpty()) {
-                GraficoCanvas(
-                    puntos = puntos!!,
-                    esPuntoUnico = modoEvaluacion == "punto"
-                )
+                GraficoCanvas(puntos = puntos!!, esPuntoUnico = modoEvaluacion == "punto")
             } else {
                 Box(
                     modifier = Modifier
@@ -209,8 +213,9 @@ fun InterfazGraficadora() {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (error.isEmpty()) "Ingrese una función" else " ",
-                        color = Color(0xFF1976D2))
+                        text = if (error.isEmpty()) "Ingrese una función" else "",
+                        color = Color(0xFF1976D2)
+                    )
                 }
             }
         }
@@ -218,25 +223,26 @@ fun InterfazGraficadora() {
 
     // Diálogo de ayuda
     if (mostrarAyuda) {
-        Dialog(onDismissRequest = { mostrarAyuda = false }) {
-            Surface(
-                shape = MaterialTheme.shapes.medium,
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Instrucciones:", style = MaterialTheme.typography.titleMedium)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("1. Usa operadores: + - * / ^")
-                    Text("2. Escribe 'x' como variable")
-                    Text("3. El origen (0,0) está al centro")
-                    Text("4. Valores decimales con punto (ej: 2.5)")
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(
-                        onClick = { mostrarAyuda = false },
-                        modifier = Modifier.align(Alignment.End)
-                    ) { Text("Entendido") }
+        AlertDialog(
+            onDismissRequest = { mostrarAyuda = false },
+            title = { Text("Instrucciones") },
+            text = {
+                Column {
+                    Text("• Operadores: + - * / ^")
+                    Text("• Usa 'x' como variable")
+                    Text("• Ejemplo válido: x^2 + 3*x - 5")
+                }
+            },
+            confirmButton = {
+                Button(onClick = { mostrarAyuda = false }) {
+                    Text("Entendido")
                 }
             }
-        }
+        )
     }
+}
+
+@Composable
+fun GraficadorTheme(content: @Composable () -> Unit) {
+    MaterialTheme(content = content)
 }
